@@ -67,17 +67,17 @@ pub struct Model {
     // _window: window::Id,
 }
 
-// pub fn limit_angle(angle: f32) -> f32 {
-//     if angle > PI {
-//         let n = ((angle - -PI) / (2. * PI)).floor();
-//         angle - 2. * PI * n
-//     } else if angle < -PI {
-//         let n = (-(angle - PI) / (2. * PI)).floor();
-//         angle + 2. * PI * n
-//     } else {
-//         angle
-//     }
-// }
+pub fn limit_angle(angle: f64) -> f64 {
+    if angle > PI_F64 {
+        let n = ((angle - -PI_F64) / (2. * PI_F64)).floor();
+        angle - 2. * PI_F64 * n
+    } else if angle < -PI_F64 {
+        let n = (-(angle - PI_F64) / (2. * PI_F64)).floor();
+        angle + 2. * PI_F64 * n
+    } else {
+        angle
+    }
+}
 
 pub fn runge_kutta_step(pendulum: &mut DoublePendulum, step_size: f64) {
     let mut vars = pendulum.get_vars();

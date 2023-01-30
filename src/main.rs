@@ -21,17 +21,18 @@ fn model(app: &App) -> Model {
         .unwrap();
 
     let mut pendulums = vec![];
-    let mut angle = 3. * PI_F64 / 4. + NUM_PENDULUMS as f64*OFFSET;
+    let mut angle = 3. * PI_F64 / 4.;
     for i in 0..NUM_PENDULUMS {
-        let l = i as f32 / NUM_PENDULUMS as f32;
+        let l = 1. - (i as f32 / NUM_PENDULUMS as f32);
         pendulums.push(DoublePendulum {
             t1: 3. * PI_F64 / 4.,
             t2: angle,
             col: hsla(2./3., 1.0, l, l),
             ..Default::default()
         });
-        angle -= OFFSET;
+        angle += OFFSET;
     }
+    pendulums.reverse();
     let prev_time = 0.;
 
     let step_forward = false;
@@ -54,6 +55,9 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             } else {
                 TIME_STEP
             };
+
+            pendulum.a1 = limit_angle(pendulum.a1);
+            pendulum.a2 = limit_angle(pendulum.a2);
             runge_kutta_step(pendulum, time_step);
         }
         model.step = false;
