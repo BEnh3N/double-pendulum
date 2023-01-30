@@ -1,32 +1,32 @@
 use nannou::prelude::*;
 
 const NUM_ARGS: usize = 7;
-const G: f32 = 9.81;
+const G: f64 = 9.81;
 
 pub struct DoublePendulum {
-    pub t1: f32,
-    pub v1: f32,
-    pub t2: f32,
-    pub v2: f32,
-    pub a1: f32,
-    pub a2: f32,
+    pub t1: f64,
+    pub v1: f64,
+    pub t2: f64,
+    pub v2: f64,
+    pub a1: f64,
+    pub a2: f64,
 
-    pub t: f32,
+    pub t: f64,
 
-    pub m1: f32,
-    pub m2: f32,
-    pub l1: f32,
-    pub l2: f32,
+    pub m1: f64,
+    pub m2: f64,
+    pub l1: f64,
+    pub l2: f64,
 
     pub col: Hsla,
 }
 
 impl DoublePendulum {
-    pub fn get_vars(&self) -> [f32; NUM_ARGS] {
+    pub fn get_vars(&self) -> [f64; NUM_ARGS] {
         [self.t1, self.v1, self.t2, self.v2, self.a1, self.a2, self.t]
     }
 
-    pub fn set_vars(&mut self, vars: [f32; NUM_ARGS]) {
+    pub fn set_vars(&mut self, vars: [f64; NUM_ARGS]) {
         self.t1 = vars[0];
         self.v1 = vars[1];
         self.t2 = vars[2];
@@ -40,9 +40,9 @@ impl DoublePendulum {
 impl Default for DoublePendulum {
     fn default() -> Self {
         Self {
-            t1: PI / 2.,
+            t1: PI_F64 / 2.,
             v1: 0.,
-            t2: PI / 2.,
+            t2: PI_F64 / 2.,
             v2: 0.,
             a1: 0.,
             a2: 0.,
@@ -61,25 +61,25 @@ impl Default for DoublePendulum {
 
 pub struct Model {
     pub pendulums: Vec<DoublePendulum>,
-    pub prev_time: f32,
+    pub prev_time: f64,
     pub step_forward: bool,
     pub step: bool,
     // _window: window::Id,
 }
 
-pub fn limit_angle(angle: f32) -> f32 {
-    if angle > PI {
-        let n = ((angle - -PI) / (2. * PI)).floor();
-        angle - 2. * PI * n
-    } else if angle < -PI {
-        let n = (-(angle - PI) / (2. * PI)).floor();
-        angle + 2. * PI * n
-    } else {
-        angle
-    }
-}
+// pub fn limit_angle(angle: f32) -> f32 {
+//     if angle > PI {
+//         let n = ((angle - -PI) / (2. * PI)).floor();
+//         angle - 2. * PI * n
+//     } else if angle < -PI {
+//         let n = (-(angle - PI) / (2. * PI)).floor();
+//         angle + 2. * PI * n
+//     } else {
+//         angle
+//     }
+// }
 
-pub fn runge_kutta_step(pendulum: &mut DoublePendulum, step_size: f32) {
+pub fn runge_kutta_step(pendulum: &mut DoublePendulum, step_size: f64) {
     let mut vars = pendulum.get_vars();
 
     let mut inp = vars.clone();
@@ -120,9 +120,9 @@ pub fn runge_kutta_step(pendulum: &mut DoublePendulum, step_size: f32) {
 
 pub fn evaluate(
     pendulum: &DoublePendulum,
-    vars: &[f32; NUM_ARGS],
-    change: &mut [f32; NUM_ARGS],
-    _time_step: f32,
+    vars: &[f64; NUM_ARGS],
+    change: &mut [f64; NUM_ARGS],
+    _time_step: f64,
 ) {
     change.fill(0.);
     change[NUM_ARGS - 1] = 1.;
