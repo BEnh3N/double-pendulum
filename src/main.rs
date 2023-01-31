@@ -5,7 +5,7 @@ const NUM_PENDULUMS: u32 = 1000;
 const OFFSET: f64 = 0.000001;
 
 const TIME_STEP: f64 = 0.025;
-const TIME_SCALE: f64 = 1.0;
+const TIME_SCALE: f64 = 0.5;
 const LINE_MUL: f32 = 175.;
 
 fn main() {
@@ -24,10 +24,11 @@ fn model(app: &App) -> Model {
     let mut angle = 3. * PI_F64 / 4.;
     for i in 0..NUM_PENDULUMS {
         let l = 1. - (i as f32 / NUM_PENDULUMS as f32);
+        let col = if i != 0 {hsla(2./3., 1., l, 1.0)} else {hsla(0., 1., 0.5, 1.)};
         pendulums.push(DoublePendulum {
             t1: 3. * PI_F64 / 4.,
             t2: angle,
-            col: hsla(2./3., 1.0, l, l),
+            col,
             ..Default::default()
         });
         angle += OFFSET;
