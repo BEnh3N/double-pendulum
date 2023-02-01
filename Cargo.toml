@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 nannou = "0.18.1"
+nannou_egui = "0.5"
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

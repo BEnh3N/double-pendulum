@@ -1,11 +1,18 @@
 use double_pendulum::*;
 use nannou::prelude::*;
+use nannou_egui::{
+    self,
+    egui::{
+        self,
+        plot::{Line, Value, Values},
+    },
+    Egui,
+};
 
-const NUM_PENDULUMS: u32 = 1000;
-const OFFSET: f64 = 0.000001;
+// const NUM_PENDULUMS: u32 = 1000;
+// const OFFSET: f64 = 0.000001;
 
-const TIME_STEP: f64 = 0.025;
-const TIME_SCALE: f64 = 0.5;
+const RAD_TO_DEG: f64 = 57.2958;
 const LINE_MUL: f32 = 175.;
 
 fn main() {
@@ -13,57 +20,67 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-    let _window = app
+    let window_id = app
         .new_window()
         .view(view)
         .key_pressed(key_pressed)
+        .raw_event(raw_window_event)
         .build()
         .unwrap();
 
-    let mut pendulums = vec![];
-    let mut angle = 3. * PI_F64 / 4.;
-    for i in 0..NUM_PENDULUMS {
-        let l = 1. - (i as f32 / NUM_PENDULUMS as f32);
-        let col = if i != 0 {hsla(2./3., 1., l, 1.0)} else {hsla(0., 1., 0.5, 1.)};
-        pendulums.push(DoublePendulum {
-            t1: 3. * PI_F64 / 4.,
-            t2: angle,
-            col,
-            ..Default::default()
-        });
-        angle += OFFSET;
-    }
-    pendulums.reverse();
-    let prev_time = 0.;
+    let egui = Egui::from_window(&app.window(window_id).unwrap());
+
+    // let pendulums = initialize_pendulums(1, PI_F64 / 2.0, 0.000001, 2./3.);
+    let pendulums = vec![DoublePendulum {
+        t1: PI_F64 / 6.,
+        ..Default::default()
+    }];
+
+    let time_rate = 1.0;
+    let time_step = 0.025;
+    let g = 9.81;
 
     let step_forward = false;
     let step = false;
 
+    let points = vec![];
+
     Model {
         // _window,
+        egui,
         pendulums,
-        prev_time,
+        time_rate,
+        time_step,
+        g,
         step_forward,
         step,
+        points,
     }
 }
 
-fn update(app: &App, model: &mut Model, _update: Update) {
+fn update(_app: &App, model: &mut Model, update: Update) {
     if model.step || !model.step_forward {
         for pendulum in &mut model.pendulums {
             let time_step = if !model.step {
-                (app.time as f64 - model.prev_time) * TIME_SCALE
+                update.since_last.as_secs_f64() * model.time_rate
             } else {
-                TIME_STEP
+                model.time_step
             };
 
-            pendulum.a1 = limit_angle(pendulum.a1);
-            pendulum.a2 = limit_angle(pendulum.a2);
+            pendulum.t1 = limit_angle(pendulum.t1);
+            pendulum.t2 = limit_angle(pendulum.t2);
             runge_kutta_step(pendulum, time_step);
         }
         model.step = false;
-        model.prev_time = app.time as f64;
     }
+
+    model.points.push(Value {
+        x: model.pendulums[0].t1,
+        y: model.pendulums[0].t2,
+    });
+
+    model.egui.set_elapsed_time(update.since_start);
+    update_ui(model);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -76,10 +93,15 @@ fn view(app: &App, model: &Model, frame: Frame) {
             (-pendulum.l1 * pendulum.t1.cos()) as f32,
         );
 
+        let h = pendulum.col.h;
+        let s = pendulum.col.s;
+        let v = pendulum.col.v;
+        let a = pendulum.col.a;
+
         draw.line()
             .start(vec2(0., 0.))
             .end(point1_pos * LINE_MUL)
-            .color(pendulum.col)
+            .color(hsva(h, s, v, a))
             .caps_round()
             .weight(2.0);
         // draw.ellipse()
@@ -95,7 +117,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         draw.line()
             .start(point1_pos * LINE_MUL)
             .end(point2_pos * LINE_MUL)
-            .color(pendulum.col)
+            .color(hsva(h, s, v, a))
             .caps_round()
             .weight(2.0);
         // draw.ellipse()
@@ -105,12 +127,114 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
 
     draw.to_frame(app, &frame).unwrap();
+    model.egui.draw_to_frame(&frame).unwrap();
 }
 
 fn key_pressed(_app: &App, model: &mut Model, key: Key) {
     match key {
-        Key::Space => model.step = true,
-        Key::Return => model.step_forward = !model.step_forward,
+        Key::Space => {
+            if model.step_forward {
+                model.step = true
+            }
+        }
+        Key::LShift => model.step_forward = !model.step_forward,
         _ => (),
     }
+}
+
+fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event::WindowEvent) {
+    model.egui.handle_raw_event(event);
+}
+
+fn update_ui(model: &mut Model) {
+    let ctx = model.egui.begin_frame();
+    egui::Window::new("Settings").show(&ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Time Rate");
+            ui.add(
+                egui::DragValue::new(&mut model.time_rate)
+                    .clamp_range(0.1..=2.0)
+                    .suffix("x")
+                    .speed(0.01),
+            );
+        });
+        ui.checkbox(&mut model.step_forward, "Step Forward");
+
+        ui.add_enabled_ui(model.step_forward, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Time Step");
+                ui.add(
+                    egui::DragValue::new(&mut model.time_step)
+                        .clamp_range(0.0001..=0.1)
+                        .fixed_decimals(3)
+                        .speed(0.001)
+                        .suffix("s"),
+                );
+                ui.separator();
+                if ui.button("STEP").clicked() {
+                    model.step = true;
+                }
+            });
+        });
+
+        let line = Line::new(Values::from_values(model.points.clone()));
+        ui.add(
+            egui::plot::Plot::new("dev_plot")
+                .line(line)
+                // .data_aspect(1.0)
+                .width(120.0)
+                .height(120.0)
+                .view_aspect(1.0)
+                .center_x_axis(true)
+                .center_y_axis(true),
+        );
+
+        ui.collapsing("Pendulums", |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                for (i, pendulum) in &mut model.pendulums.iter_mut().enumerate() {
+                    ui.collapsing(format!("Pendulum {}", i).as_str(), |ui| {
+                        // PENDULUM 1 DETAILS
+                        ui.horizontal(|ui| {
+                            ui.heading("P1");
+                            ui.add(
+                                egui::DragValue::new(&mut pendulum.l1)
+                                    .clamp_range(0.1..=1.5)
+                                    .speed(0.01)
+                                    .suffix("m"),
+                            );
+                            ui.add(
+                                egui::DragValue::new(&mut pendulum.m1)
+                                    .clamp_range(0.1..=5.0)
+                                    .speed(0.05)
+                                    .suffix("kg"),
+                            );
+                        });
+                        ui.label(format!("{:.5}°", pendulum.t1 * RAD_TO_DEG));
+                        ui.label(format!("{:.5} m/s", pendulum.v1));
+
+                        // PENDULUM 2 DETAILS
+                        ui.horizontal(|ui| {
+                            ui.heading("P2");
+                            ui.add(
+                                egui::DragValue::new(&mut pendulum.l2)
+                                    .clamp_range(0.1..=1.5)
+                                    .speed(0.01)
+                                    .suffix("m"),
+                            );
+                            ui.add(
+                                egui::DragValue::new(&mut pendulum.m2)
+                                    .clamp_range(0.1..=5.0)
+                                    .speed(0.05)
+                                    .suffix("kg"),
+                            );
+                        });
+                        ui.label(format!("{:.5}°", pendulum.t2 * RAD_TO_DEG));
+                        ui.label(format!("{:.5} m/s", pendulum.v2));
+
+                        ui.color_edit_button_hsva(&mut pendulum.col);
+                    });
+                }
+            });
+        });
+    });
 }
