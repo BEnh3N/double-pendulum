@@ -2,6 +2,7 @@ use nannou::prelude::PI_F64;
 
 pub const NUM_ARGS: usize = 7;
 
+#[derive(Clone)]
 pub struct DoublePendulum {
     pub t1: f64,
     pub v1: f64,

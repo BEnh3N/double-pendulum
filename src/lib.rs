@@ -18,6 +18,7 @@ pub struct Model {
     pub step: bool,
 
     pub points: Vec<Value>,
+    pub initial_state: Vec<DoublePendulum>,
 }
 
 pub fn limit_angle(angle: f64) -> f64 {
