@@ -27,7 +27,7 @@ fn model(app: &App) -> Model {
 
     let egui = Egui::from_window(&app.window(window_id).unwrap());
 
-    let pendulums = initialize_pendulums(1000, 2. * PI_F64 / 3., 0.000001, 2./3.);
+    let pendulums = initialize_pendulums(1000, 2. * PI_F64 / 3., 0.000001, 2. / 3.);
     // let pendulums = vec![DoublePendulum {
     //     t1: PI_F64 / 6.,
     //     ..Default::default()
@@ -57,7 +57,7 @@ fn model(app: &App) -> Model {
         step_forward,
         step,
         points,
-        initial_state
+        initial_state,
     }
 }
 
@@ -74,7 +74,7 @@ fn update(_app: &App, model: &mut Model, update: Update) {
                 pendulum.t1 = limit_angle(pendulum.t1);
                 pendulum.t2 = limit_angle(pendulum.t2);
             }
-            
+
             runge_kutta_step(pendulum, time_step);
         }
 
@@ -148,7 +148,7 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         Key::R => {
             model.pendulums = model.initial_state.clone();
             model.points.clear();
-        },
+        }
         _ => (),
     }
 }
@@ -192,18 +192,17 @@ fn update_ui(model: &mut Model) {
             });
         });
 
-
-
         let line = Line::new(Values::from_values(model.points.clone()));
-        ui.add(egui::plot::Plot::new("dev_plot")
-            .line(line)
-            .width(120.0)
-            .height(120.0)
-            .view_aspect(1.0)
-            .center_x_axis(true)
-            .center_y_axis(true)
+        ui.add(
+            egui::plot::Plot::new("dev_plot")
+                .line(line)
+                .width(120.0)
+                .height(120.0)
+                .view_aspect(1.0)
+                .center_x_axis(true)
+                .center_y_axis(true),
         );
-        
+
         if ui.button("CLEAR GRAPH").clicked() {
             model.points.clear();
         }
