@@ -2,73 +2,15 @@ use nannou::prelude::*;
 use nannou_egui::{self, egui::plot::Value, Egui};
 // use egui;
 
-const NUM_ARGS: usize = 7;
+pub mod dp;
+use dp::*;
+
 const G: f64 = 9.81;
-
-pub struct DoublePendulum {
-    pub t1: f64,
-    pub v1: f64,
-    pub t2: f64,
-    pub v2: f64,
-    pub a1: f64,
-    pub a2: f64,
-
-    pub t: f64,
-
-    pub m1: f64,
-    pub m2: f64,
-    pub l1: f64,
-    pub l2: f64,
-
-    pub col: nannou_egui::egui::color::Hsva,
-}
-
-impl DoublePendulum {
-    pub fn get_vars(&self) -> [f64; NUM_ARGS] {
-        [self.t1, self.v1, self.t2, self.v2, self.a1, self.a2, self.t]
-    }
-
-    pub fn set_vars(&mut self, vars: [f64; NUM_ARGS]) {
-        self.t1 = vars[0];
-        self.v1 = vars[1];
-        self.t2 = vars[2];
-        self.v2 = vars[3];
-        self.a1 = vars[4];
-        self.a2 = vars[5];
-        self.t = vars[6];
-    }
-}
-
-impl Default for DoublePendulum {
-    fn default() -> Self {
-        Self {
-            t1: PI_F64 / 2.,
-            v1: 0.,
-            t2: 0.,
-            v2: 0.,
-            a1: 0.,
-            a2: 0.,
-
-            t: 0.,
-
-            m1: 2.,
-            m2: 2.,
-            l1: 1.,
-            l2: 1.,
-
-            col: nannou_egui::egui::color::Hsva {
-                h: 1.0,
-                s: 0.0,
-                v: 1.0,
-                a: 1.0,
-            },
-        }
-    }
-}
 
 pub struct Model {
     pub egui: Egui,
     pub pendulums: Vec<DoublePendulum>,
+    pub limit_angles: bool,
     pub time_rate: f64,
     pub time_step: f64,
     pub g: f64,
@@ -120,7 +62,7 @@ pub fn runge_kutta_step(pendulum: &mut DoublePendulum, step_size: f64) {
 
     // ----
     let mut k4 = [0.; NUM_ARGS];
-    evaluate(&pendulum, &inp, &mut k4, step_size);
+    evaluate(pendulum, &inp, &mut k4, step_size);
 
     for i in 0..NUM_ARGS {
         vars[i] += (k1[i] + 2. * k2[i] + 2. * k3[i] + k4[i]) * step_size / 6.;
@@ -150,19 +92,19 @@ pub fn evaluate(
     change[0] = dth1;
 
     let mut num = -G * (2. * m1 + m2) * th1.sin();
-    num = num - G * m2 * (th1 - 2. * th2).sin();
-    num = num - 2. * m2 * dth2 * dth2 * l2 * (th1 - th2).sin();
-    num = num - m2 * dth1 * dth1 * l1 * (2. * (th1 - th2)).sin();
-    num = num / (l1 * (2. * m1 + m2 - m2 * (2. * (th1 - th2)).cos()));
+    num -= G * m2 * (th1 - 2. * th2).sin();
+    num -= 2. * m2 * dth2 * dth2 * l2 * (th1 - th2).sin();
+    num -= m2 * dth1 * dth1 * l1 * (2. * (th1 - th2)).sin();
+    num /= l1 * (2. * m1 + m2 - m2 * (2. * (th1 - th2)).cos());
     change[1] = num;
 
     change[2] = dth2;
 
     num = (m1 + m2) * dth1 * dth1 * l1;
-    num = num + G * (m1 + m2) * th1.cos();
-    num = num + m2 * dth2 * dth2 * l2 * (th1 - th2).cos();
-    num = num * 2. * (th1 - th2).sin();
-    num = num / (l2 * (2. * m1 + m2 - m2 * (2. * (th1 - th2)).cos()));
+    num += G * (m1 + m2) * th1.cos();
+    num += m2 * dth2 * dth2 * l2 * (th1 - th2).cos();
+    num *= 2. * (th1 - th2).sin();
+    num /= l2 * (2. * m1 + m2 - m2 * (2. * (th1 - th2)).cos());
     change[3] = num;
 }
 

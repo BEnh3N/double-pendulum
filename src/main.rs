@@ -1,4 +1,4 @@
-use double_pendulum::*;
+use double_pendulum::{dp::DoublePendulum, *};
 use nannou::prelude::*;
 use nannou_egui::{
     self,
@@ -8,9 +8,6 @@ use nannou_egui::{
     },
     Egui,
 };
-
-// const NUM_PENDULUMS: u32 = 1000;
-// const OFFSET: f64 = 0.000001;
 
 const RAD_TO_DEG: f64 = 57.2958;
 const LINE_MUL: f32 = 175.;
@@ -32,9 +29,11 @@ fn model(app: &App) -> Model {
 
     // let pendulums = initialize_pendulums(1, PI_F64 / 2.0, 0.000001, 2./3.);
     let pendulums = vec![DoublePendulum {
-        t1: PI_F64 / 6.,
+        t1: 3. * PI_F64 / 4.,
         ..Default::default()
     }];
+
+    let limit_angles = true;
 
     let time_rate = 1.0;
     let time_step = 0.025;
@@ -49,6 +48,7 @@ fn model(app: &App) -> Model {
         // _window,
         egui,
         pendulums,
+        limit_angles,
         time_rate,
         time_step,
         g,
@@ -67,8 +67,10 @@ fn update(_app: &App, model: &mut Model, update: Update) {
                 model.time_step
             };
 
-            pendulum.t1 = limit_angle(pendulum.t1);
-            pendulum.t2 = limit_angle(pendulum.t2);
+            if model.limit_angles {
+                pendulum.t1 = limit_angle(pendulum.t1);
+                pendulum.t2 = limit_angle(pendulum.t2);
+            }
             runge_kutta_step(pendulum, time_step);
         }
         model.step = false;
@@ -181,7 +183,6 @@ fn update_ui(model: &mut Model) {
         ui.add(
             egui::plot::Plot::new("dev_plot")
                 .line(line)
-                // .data_aspect(1.0)
                 .width(120.0)
                 .height(120.0)
                 .view_aspect(1.0)
@@ -192,7 +193,7 @@ fn update_ui(model: &mut Model) {
         ui.collapsing("Pendulums", |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for (i, pendulum) in &mut model.pendulums.iter_mut().enumerate() {
-                    ui.collapsing(format!("Pendulum {}", i).as_str(), |ui| {
+                    ui.collapsing(format!("Pendulum {i}").as_str(), |ui| {
                         // PENDULUM 1 DETAILS
                         ui.horizontal(|ui| {
                             ui.heading("P1");
