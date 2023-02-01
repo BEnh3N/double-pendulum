@@ -29,11 +29,13 @@ fn model(app: &App) -> Model {
 
     // let pendulums = initialize_pendulums(1, PI_F64 / 2.0, 0.000001, 2./3.);
     let pendulums = vec![DoublePendulum {
-        t1: 3. * PI_F64 / 4.,
+        t1: PI_F64,
+        t2: PI_F64,
+        // t2: PI_F64,
         ..Default::default()
     }];
 
-    let limit_angles = true;
+    let limit_angles = false;
 
     let time_rate = 1.0;
     let time_step = 0.025;
