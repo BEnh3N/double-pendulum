@@ -5,7 +5,11 @@ use nannou_egui::{self, egui::plot::Value, Egui};
 pub mod dp;
 use dp::*;
 
+pub mod ui;
+
 pub const G: f64 = 9.81;
+pub const RAD_TO_DEG: f64 = 57.2958;
+pub const LINE_MUL: f32 = 175.;
 
 pub struct Model {
     pub egui: Egui,
