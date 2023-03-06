@@ -5,6 +5,7 @@ use nannou_egui::{
     egui::{
         self,
         plot::{Line, Value, Values},
+        Color32,
     },
     Egui,
 };
@@ -27,11 +28,8 @@ fn model(app: &App) -> Model {
 
     let egui = Egui::from_window(&app.window(window_id).unwrap());
 
-    let pendulums = initialize_pendulums(1000, 2. * PI_F64 / 3., 0.000001, 2. / 3.);
-    // let pendulums = vec![DoublePendulum {
-    //     t1: PI_F64 / 6.,
-    //     ..Default::default()
-    // }];
+    // let pendulums = initialize_pendulums(1000, PI_F64 / 2., 0.000001, 2. / 3.);
+    let pendulums = initialize_pendulums(1, PI_F64 / 6., PI_F64, 1.);
 
     let limit_angles = true;
 
@@ -42,7 +40,7 @@ fn model(app: &App) -> Model {
     let step_forward = false;
     let step = false;
 
-    let points = vec![];
+    let points = vec![vec![]];
 
     let initial_state = pendulums.clone();
 
@@ -63,24 +61,69 @@ fn model(app: &App) -> Model {
 
 fn update(_app: &App, model: &mut Model, update: Update) {
     if model.step || !model.step_forward {
-        for pendulum in &mut model.pendulums {
+        let last_i = model.pendulums.len() - 1;
+        let mut skip_line = false;
+
+        for (i, p) in &mut model.pendulums.iter_mut().enumerate() {
             let time_step = if !model.step {
                 update.since_last.as_secs_f64() * model.time_rate
             } else {
                 model.time_step
             };
 
-            if model.limit_angles {
-                pendulum.t1 = limit_angle(pendulum.t1);
-                pendulum.t2 = limit_angle(pendulum.t2);
-            }
+            runge_kutta_step(p, time_step);
 
-            runge_kutta_step(pendulum, time_step);
+            // let new_t1 = p.t1 + p.v1 * time_step + p.a1 * (time_step * time_step * 0.5);
+
+            // let num1 = -G * (2. * p.m1 + p.m2) * p.t1.sin();
+            // let num2 = -G * p.m2 * (p.t1 - 2. * p.t2).sin();
+            // let num3 = -2. * (p.t1 - p.t2).sin() * p.m2;
+            // let num4 = (p.v2 * p.v2) * p.l2 + (p.v1 * p.v1) * p.l1 * (p.t1 - p.t2).cos();
+            // let den = p.l1 * (2. * p.m1 + p.m2 - p.m2 * (2. * p.t1 - 2. * p.t2).cos());
+
+            // let new_a1 = (num1 + num2 + num3 * num4) / den;
+
+            // let new_v1 = p.v1 + (p.a1 + new_a1) * (time_step * 0.5);
+
+            // let new_t2 = p.t2 + p.v2 * time_step + p.a2 * (time_step * time_step * 0.5);
+
+            // let num1 = 2. * (p.t1 - p.t2).sin();
+            // let num2 = (p.v1 * p.v1) * p.l1 * (p.m1 + p.m2);
+            // let num3 = G * (p.m1 + p.m2) * p.t1.cos();
+            // let num4 = (p.v2 * p.v2) * p.l2 * p.m2 * (p.t1 - p.t2).cos();
+            // let den = p.l2 * (2. * p.m1 + p.m2 - p.m2 * (2. * p.t1 - 2. * p.t2).cos());
+
+            // let new_a2 = num1 * (num2 + num3 + num4) / den;
+
+            // let new_v2 = p.v2 + (p.a2 + new_a2) * (time_step * 0.5);
+
+            // p.t1 = new_t1;
+            // p.v1 = new_v1;
+            // p.a1 = new_a1;
+
+            // p.t2 = new_t2;
+            // p.v2 = new_v2;
+            // p.a2 = new_a2;
+
+            if model.limit_angles {
+                let (limit1, limit2);
+                (p.t1, limit1) = limit_angle(p.t1);
+                (p.t2, limit2) = limit_angle(p.t2);
+
+                if (limit1 || limit2) && i == last_i {
+                    skip_line = true
+                }
+            }
         }
 
-        model.points.push(Value {
-            x: model.pendulums[0].t1,
-            y: model.pendulums[0].t2,
+        if skip_line {
+            model.points.push(vec![]);
+        }
+
+        let i = model.points.len();
+        model.points[i - 1].push(Value {
+            x: model.pendulums[last_i].t1,
+            y: model.pendulums[last_i].t2,
         });
 
         model.step = false;
@@ -192,16 +235,19 @@ fn update_ui(model: &mut Model) {
             });
         });
 
-        let line = Line::new(Values::from_values(model.points.clone()));
-        ui.add(
-            egui::plot::Plot::new("dev_plot")
-                .line(line)
-                .width(120.0)
-                .height(120.0)
-                .view_aspect(1.0)
-                .center_x_axis(true)
-                .center_y_axis(true),
-        );
+        let mut plot = egui::plot::Plot::new("angle_plot")
+            .width(120.0)
+            .height(120.0)
+            .view_aspect(1.0)
+            .center_x_axis(true)
+            .center_y_axis(true);
+
+        for line_segment in &model.points {
+            let line = Line::new(Values::from_values(line_segment.clone())).color(Color32::GOLD);
+            plot = plot.line(line);
+        }
+
+        ui.add(plot);
 
         if ui.button("CLEAR GRAPH").clicked() {
             model.points.clear();

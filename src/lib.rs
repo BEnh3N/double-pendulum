@@ -5,7 +5,7 @@ use nannou_egui::{self, egui::plot::Value, Egui};
 pub mod dp;
 use dp::*;
 
-const G: f64 = 9.81;
+pub const G: f64 = 9.81;
 
 pub struct Model {
     pub egui: Egui,
@@ -17,19 +17,19 @@ pub struct Model {
     pub step_forward: bool,
     pub step: bool,
 
-    pub points: Vec<Value>,
+    pub points: Vec<Vec<Value>>,
     pub initial_state: Vec<DoublePendulum>,
 }
 
-pub fn limit_angle(angle: f64) -> f64 {
+pub fn limit_angle(angle: f64) -> (f64, bool) {
     if angle > PI_F64 {
         let n = ((angle - -PI_F64) / (2. * PI_F64)).floor();
-        angle - 2. * PI_F64 * n
+        (angle - 2. * PI_F64 * n, true)
     } else if angle < -PI_F64 {
         let n = (-(angle - PI_F64) / (2. * PI_F64)).floor();
-        angle + 2. * PI_F64 * n
+        (angle + 2. * PI_F64 * n, true)
     } else {
-        angle
+        (angle, false)
     }
 }
 
