@@ -4,9 +4,7 @@ use nannou_egui::egui::{
     Color32,
 };
 
-use crate::Model;
-
-const RAD_TO_DEG: f64 = 57.2958;
+use crate::{Model, RAD_TO_DEG};
 
 pub fn update_ui(model: &mut Model) {
     let ctx = model.egui.begin_frame();
