@@ -11,7 +11,7 @@ pub fn update_ui(model: &mut Model) {
     egui::Window::new("Settings").show(&ctx, |ui| {
         if ui.button("RESET").clicked() {
             model.pendulums = model.initial_state.clone();
-            model.points.clear();
+            model.points = vec![vec![]];
         }
         ui.horizontal(|ui| {
             ui.label("Time Rate");
