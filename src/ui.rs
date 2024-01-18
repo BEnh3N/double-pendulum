@@ -56,7 +56,7 @@ pub fn update_ui(model: &mut Model) {
         ui.add(plot);
 
         if ui.button("CLEAR GRAPH").clicked() {
-            model.points.clear();
+            model.points = vec![vec![]];
         }
 
         ui.collapsing("Pendulums", |ui| {
