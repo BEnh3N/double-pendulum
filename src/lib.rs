@@ -1,18 +1,18 @@
-use nannou::prelude::*;
-use nannou_egui::{self, egui::plot::Value, Egui};
-// use egui;
+use nannou::{color, prelude::*};
 
 pub mod dp;
 use dp::*;
+use nannou_egui::egui::epaint::Hsva;
 
 pub mod ui;
 
 pub const G: f64 = 9.81;
 pub const RAD_TO_DEG: f64 = 57.2958;
 pub const LINE_MUL: f32 = 175.;
+const PI2: f32 = 2.0 * PI;
 
 pub struct Model {
-    pub egui: Egui,
+    pub egui: nannou_egui::Egui,
     pub pendulums: Vec<DoublePendulum>,
     pub limit_angles: bool,
     pub time_rate: f64,
@@ -21,8 +21,15 @@ pub struct Model {
     pub step_forward: bool,
     pub step: bool,
 
-    pub points: Vec<Vec<Value>>,
+    pub points: Vec<Vec<[f64; 2]>>,
     pub initial_state: Vec<DoublePendulum>,
+}
+
+impl Model {
+    pub fn reset(&mut self) {
+        self.pendulums = self.initial_state.clone();
+        self.points = vec![vec![]]
+    }
 }
 
 pub fn limit_angle(angle: f64) -> (f64, bool) {
@@ -129,7 +136,7 @@ pub fn initialize_pendulums(
             DoublePendulum {
                 t1: angle,
                 t2: angle,
-                col: hsva_rad(hue, s * 3., 1. - s, 1.0),
+                col: Hsva::new(hue, s * 3., 1. - s, 1.0),
                 ..Default::default()
             },
         );
@@ -140,13 +147,8 @@ pub fn initialize_pendulums(
     pendulums
 }
 
-pub fn hsva_rad(h: f32, s: f32, v: f32, a: f32) -> nannou_egui::egui::color::Hsva {
-    nannou_egui::egui::color::Hsva {
-        h: h / (2. * PI),
-        s,
-        v,
-        a,
-    }
+pub fn hsva_rad(h: f32, s: f32, v: f32, a: f32) -> color::Hsva {
+    hsva(h / (PI2), s, v, a)
 }
 
 pub fn calc_standard_dev(values: &Vec<f64>) -> f64 {

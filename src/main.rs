@@ -1,6 +1,6 @@
 use double_pendulum::*;
 use nannou::prelude::*;
-use nannou_egui::{self, egui::plot::Value, Egui};
+use nannou_egui::{self, Egui};
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -20,7 +20,7 @@ fn model(app: &App) -> Model {
     // let pendulums = initialize_pendulums(1000, PI_F64 / 2., 0.000001, 2. / 3.);
     let pendulums = initialize_pendulums(1, PI_F64 / 6., PI_F64, 1.);
 
-    let limit_angles = true;
+    let limit_angles = false;
 
     let time_rate = 1.0;
     let time_step = 0.025;
@@ -34,7 +34,6 @@ fn model(app: &App) -> Model {
     let initial_state = pendulums.clone();
 
     Model {
-        // _window,
         egui,
         pendulums,
         limit_angles,
@@ -78,10 +77,7 @@ fn update(_app: &App, model: &mut Model, update: Update) {
         }
 
         let i = model.points.len();
-        model.points[i - 1].push(Value {
-            x: model.pendulums[last_i].t1,
-            y: model.pendulums[last_i].t2,
-        });
+        model.points[i - 1].push([model.pendulums[last_i].t1, model.pendulums[last_i].t2]);
 
         model.step = false;
     }
@@ -100,15 +96,17 @@ fn view(app: &App, model: &Model, frame: Frame) {
             (-pendulum.l1 * pendulum.t1.cos()) as f32,
         );
 
-        let h = pendulum.col.h;
-        let s = pendulum.col.s;
-        let v = pendulum.col.v;
-        let a = pendulum.col.a;
+        let col = hsva(
+            pendulum.col.h,
+            pendulum.col.s,
+            pendulum.col.v,
+            pendulum.col.a,
+        );
 
         draw.line()
             .start(vec2(0., 0.))
             .end(point1_pos * LINE_MUL)
-            .color(hsva(h, s, v, a))
+            .color(col)
             .caps_round()
             .weight(2.0);
 
@@ -120,7 +118,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         draw.line()
             .start(point1_pos * LINE_MUL)
             .end(point2_pos * LINE_MUL)
-            .color(hsva(h, s, v, a))
+            .color(col)
             .caps_round()
             .weight(2.0);
     }

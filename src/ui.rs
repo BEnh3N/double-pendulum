@@ -1,13 +1,10 @@
-use nannou_egui::egui::{
-    self,
-    plot::{Line, Values},
-    Color32,
-};
+use egui_plot::{Line, Plot};
+use nannou_egui::egui;
 
 use crate::{Model, RAD_TO_DEG};
 
 pub fn update_ui(model: &mut Model) {
-    let ctx = model.egui.begin_frame();
+    let ctx = &model.egui.begin_frame();
     egui::Window::new("Settings").show(&ctx, |ui| {
         if ui.button("RESET").clicked() {
             model.pendulums = model.initial_state.clone();
@@ -22,8 +19,8 @@ pub fn update_ui(model: &mut Model) {
                     .speed(0.01),
             );
         });
-        ui.checkbox(&mut model.step_forward, "Step Forward");
 
+        ui.checkbox(&mut model.step_forward, "Step Forward");
         ui.add_enabled_ui(model.step_forward, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Time Step");
@@ -41,24 +38,24 @@ pub fn update_ui(model: &mut Model) {
             });
         });
 
-        let mut plot = egui::plot::Plot::new("angle_plot")
-            .width(120.0)
-            .height(120.0)
-            .view_aspect(1.0)
-            .center_x_axis(true)
-            .center_y_axis(true);
-
-        for line_segment in &model.points {
-            let line = Line::new(Values::from_values(line_segment.clone())).color(Color32::GOLD);
-            plot = plot.line(line);
-        }
-
-        ui.add(plot);
-
+        // Angle plot
+        // Plot::new("angle_plot")
+        //     .view_aspect(1.0)
+        //     .data_aspect(1.0)
+        //     // .center_x_axis(true)
+        //     // .center_y_axis(true)
+        //     .show(ui, |plot_ui| {
+        //         println!("{}", model.points.len());
+        //         for line_segment in &model.points {
+        //             let line = Line::new(line_segment.clone());
+        //             plot_ui.line(line);
+        //         }
+        //     });
         if ui.button("CLEAR GRAPH").clicked() {
-            model.points = vec![vec![]];
+            model.points = vec![vec![]]
         }
 
+        // Individual pendulum editing
         ui.collapsing("Pendulums", |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for (i, pendulum) in &mut model.pendulums.iter_mut().enumerate() {

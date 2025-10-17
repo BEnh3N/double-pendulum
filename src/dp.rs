@@ -1,4 +1,6 @@
-use nannou::prelude::PI_F64;
+use std::f64::consts::PI;
+
+use nannou_egui::egui::epaint::Hsva;
 
 pub const NUM_ARGS: usize = 7;
 
@@ -18,7 +20,7 @@ pub struct DoublePendulum {
     pub l1: f64,
     pub l2: f64,
 
-    pub col: nannou_egui::egui::color::Hsva,
+    pub col: Hsva,
 }
 
 impl DoublePendulum {
@@ -40,7 +42,7 @@ impl DoublePendulum {
 impl Default for DoublePendulum {
     fn default() -> Self {
         Self {
-            t1: PI_F64 / 2.,
+            t1: PI / 2.,
             v1: 0.,
             t2: 0.,
             v2: 0.,
@@ -53,13 +55,7 @@ impl Default for DoublePendulum {
             m2: 2.,
             l1: 1.,
             l2: 1.,
-
-            col: nannou_egui::egui::color::Hsva {
-                h: 1.0,
-                s: 0.0,
-                v: 1.0,
-                a: 1.0,
-            },
+            col: Hsva::new(1.0, 1.0, 1.0, 1.0),
         }
     }
 }
