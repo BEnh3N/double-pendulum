@@ -6,8 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nannou = "0.18.1"
-nannou_egui = "0.5"
+egui_plot = "0.23"
+nannou = "0.19"
+nannou_egui = "0.19"
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]
