@@ -1,107 +1,135 @@
+use std::f64::consts::PI;
+
+use crate::{
+    dp::{DoublePendulum, Pendulum},
+    Points, StepForward, TimeRate, RAD_TO_DEG,
+};
+use bevy::prelude::*;
+use bevy_egui::{
+    egui::{self, text::LayoutJob, Color32, TextFormat, Ui, Vec2b},
+    EguiContexts,
+};
 use egui_plot::{Line, Plot};
-use nannou_egui::egui;
 
-use crate::{Model, RAD_TO_DEG};
-
-pub fn update_ui(model: &mut Model) {
-    let ctx = &model.egui.begin_frame();
-    egui::Window::new("Settings").show(&ctx, |ui| {
-        if ui.button("RESET").clicked() {
-            model.pendulums = model.initial_state.clone();
-            model.points = vec![vec![]];
-        }
-        ui.horizontal(|ui| {
-            ui.label("Time Rate");
-            ui.add(
-                egui::DragValue::new(&mut model.time_rate)
-                    .clamp_range(0.1..=2.0)
-                    .suffix("x")
-                    .speed(0.01),
-            );
-        });
-
-        ui.checkbox(&mut model.step_forward, "Step Forward");
-        ui.add_enabled_ui(model.step_forward, |ui| {
+pub fn ui_update(
+    mut contexts: EguiContexts,
+    mut pendulums: Query<&mut DoublePendulum>,
+    mut time_rate: ResMut<TimeRate>,
+    mut points: ResMut<Points>,
+    mut step_forward: ResMut<StepForward>,
+) {
+    let ctx = contexts.ctx_mut().unwrap();
+    egui::SidePanel::left("Settings")
+        .resizable(false)
+        .show(ctx, |ui| {
+            if ui.button("RESET").clicked() {
+                pendulums.iter_mut().for_each(|mut p| p.reset());
+                points.empty();
+            }
             ui.horizontal(|ui| {
-                ui.label("Time Step");
+                ui.label("Time Rate");
                 ui.add(
-                    egui::DragValue::new(&mut model.time_step)
-                        .clamp_range(0.0001..=0.1)
-                        .fixed_decimals(3)
-                        .speed(0.001)
-                        .suffix("s"),
+                    egui::DragValue::new(&mut time_rate.0)
+                        .range(0.1..=2.0)
+                        .suffix("x")
+                        .speed(0.01),
                 );
-                ui.separator();
-                if ui.button("STEP").clicked() {
-                    model.step = true;
-                }
             });
-        });
 
-        // Angle plot
-        // Plot::new("angle_plot")
-        //     .view_aspect(1.0)
-        //     .data_aspect(1.0)
-        //     // .center_x_axis(true)
-        //     // .center_y_axis(true)
-        //     .show(ui, |plot_ui| {
-        //         println!("{}", model.points.len());
-        //         for line_segment in &model.points {
-        //             let line = Line::new(line_segment.clone());
-        //             plot_ui.line(line);
-        //         }
-        //     });
-        if ui.button("CLEAR GRAPH").clicked() {
-            model.points = vec![vec![]]
-        }
-
-        // Individual pendulum editing
-        ui.collapsing("Pendulums", |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for (i, pendulum) in &mut model.pendulums.iter_mut().enumerate() {
-                    ui.collapsing(format!("Pendulum {i}").as_str(), |ui| {
-                        // PENDULUM 1 DETAILS
-                        ui.horizontal(|ui| {
-                            ui.heading("P1");
-                            ui.add(
-                                egui::DragValue::new(&mut pendulum.l1)
-                                    .clamp_range(0.1..=1.5)
-                                    .speed(0.01)
-                                    .suffix("m"),
-                            );
-                            ui.add(
-                                egui::DragValue::new(&mut pendulum.m1)
-                                    .clamp_range(0.1..=5.0)
-                                    .speed(0.05)
-                                    .suffix("kg"),
-                            );
-                        });
-                        ui.label(format!("{:.5}°", pendulum.t1 * RAD_TO_DEG));
-                        ui.label(format!("{:.5} m/s", pendulum.v1));
-
-                        // PENDULUM 2 DETAILS
-                        ui.horizontal(|ui| {
-                            ui.heading("P2");
-                            ui.add(
-                                egui::DragValue::new(&mut pendulum.l2)
-                                    .clamp_range(0.1..=1.5)
-                                    .speed(0.01)
-                                    .suffix("m"),
-                            );
-                            ui.add(
-                                egui::DragValue::new(&mut pendulum.m2)
-                                    .clamp_range(0.1..=5.0)
-                                    .speed(0.05)
-                                    .suffix("kg"),
-                            );
-                        });
-                        ui.label(format!("{:.5}°", pendulum.t2 * RAD_TO_DEG));
-                        ui.label(format!("{:.5} m/s", pendulum.v2));
-
-                        ui.color_edit_button_hsva(&mut pendulum.col);
-                    });
-                }
+            ui.checkbox(&mut step_forward.enabled, "Step Forward");
+            ui.add_enabled_ui(step_forward.enabled, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Time Step");
+                    ui.add(
+                        egui::DragValue::new(&mut step_forward.time_step)
+                            .range(0.0001..=0.1)
+                            .fixed_decimals(3)
+                            .speed(0.001)
+                            .suffix("s"),
+                    );
+                    ui.separator();
+                    if ui.button("STEP").clicked() {
+                        step_forward.step = true;
+                    }
+                });
             });
+
+            // Angle plot
+            ui.separator();
+            ui.heading("Angle Plot");
+            Plot::new("angle_plot")
+                .width(ui.available_width())
+                .auto_bounds(false)
+                .view_aspect(1.0)
+                .data_aspect(1.0)
+                .default_x_bounds(-PI, PI)
+                .default_y_bounds(-PI, PI)
+                .show(ui, |plot_ui| {
+                    for line_segment in &points.0 {
+                        let line = Line::new("segment", line_segment.clone()).color(Color32::GOLD);
+                        plot_ui.line(line);
+                    }
+                });
+            if ui.button("CLEAR GRAPH").clicked() {
+                points.empty();
+            }
+
+            ui.separator();
+            pendulum_editor(ui, pendulums);
         });
+}
+
+fn pendulum_editor(ui: &mut Ui, mut pendulums: Query<&mut DoublePendulum>) {
+    ui.heading("Pendulums");
+    egui::ScrollArea::vertical()
+        .auto_shrink(Vec2b::new(false, false))
+        .show(ui, |ui| {
+            for (i, mut pendulum) in pendulums.iter_mut().enumerate() {
+                let mut pendulum_text = LayoutJob::default();
+                pendulum_text.append(
+                    "⏺",
+                    0.0,
+                    TextFormat {
+                        color: pendulum.col.into(),
+                        ..Default::default()
+                    },
+                );
+                pendulum_text.append(
+                    format!(" Pendulum {}", i).as_str(),
+                    0.0,
+                    TextFormat::default(),
+                );
+
+                ui.collapsing(pendulum_text, |ui| {
+                    pendulum_details(ui, &mut pendulum.p1, "Arm 1");
+                    pendulum_details(ui, &mut pendulum.p2, "Arm 2");
+
+                    ui.color_edit_button_hsva(&mut pendulum.col);
+
+                    if ui.button("Reset").clicked() {
+                        pendulum.reset();
+                    }
+                });
+            }
+        });
+}
+
+fn pendulum_details(ui: &mut Ui, pendulum: &mut Pendulum, name: &str) {
+    ui.heading(name);
+    ui.horizontal(|ui| {
+        ui.add(
+            egui::DragValue::new(&mut pendulum.length)
+                .range(0.1..=1.5)
+                .speed(0.01)
+                .suffix("m"),
+        );
+        ui.add(
+            egui::DragValue::new(&mut pendulum.mass)
+                .range(0.1..=5.0)
+                .speed(0.05)
+                .suffix("kg"),
+        );
     });
+    ui.label(format!("{:.5}°", pendulum.angle * RAD_TO_DEG));
+    ui.label(format!("{:.5} m/s", pendulum.velocity));
 }

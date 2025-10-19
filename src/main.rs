@@ -1,148 +1,98 @@
-use double_pendulum::*;
-use nannou::prelude::*;
-use nannou_egui::{self, Egui};
+use bevy::prelude::*;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+use bevy_vector_shapes::prelude::*;
+use double_pendulum::{dp::*, ui::*, *};
 
 fn main() {
-    nannou::app(model).update(update).run();
+    App::new()
+        .add_plugins((
+            DefaultPlugins,
+            Shape2dPlugin::default(),
+            EguiPlugin::default(),
+        ))
+        .insert_resource(ClearColor(Color::BLACK))
+        .init_resource::<TimeRate>()
+        .init_resource::<Points>()
+        .init_resource::<StepForward>()
+        .add_systems(Startup, setup)
+        .add_systems(Update, (draw, update, key_press))
+        .add_systems(EguiPrimaryContextPass, ui_update)
+        .run();
 }
 
-fn model(app: &App) -> Model {
-    let window_id = app
-        .new_window()
-        .view(view)
-        .key_pressed(key_pressed)
-        .raw_event(raw_window_event)
-        .build()
-        .unwrap();
-
-    let egui = Egui::from_window(&app.window(window_id).unwrap());
-
-    // let pendulums = initialize_pendulums(1000, PI_F64 / 2., 0.000001, 2. / 3.);
-    let pendulums = initialize_pendulums(1, PI_F64 / 6., PI_F64, 1.);
-
-    let limit_angles = false;
-
-    let time_rate = 1.0;
-    let time_step = 0.025;
-    let g = 9.81;
-
-    let step_forward = false;
-    let step = false;
-
-    let points = vec![vec![]];
-
-    let initial_state = pendulums.clone();
-
-    Model {
-        egui,
-        pendulums,
-        limit_angles,
-        time_rate,
-        time_step,
-        g,
-        step_forward,
-        step,
-        points,
-        initial_state,
-    }
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d::default());
+    // initialize_pendulums(&mut commands, 1, PI / 6.0, 0.0, 0.0);
+    initialize_pendulums(&mut commands, 1000, PI05, 0.000001, 2.0 / 3.0);
 }
 
-fn update(_app: &App, model: &mut Model, update: Update) {
-    if model.step || !model.step_forward {
-        let last_i = model.pendulums.len() - 1;
-        let mut skip_line = false;
+fn update(
+    time: Res<Time>,
+    time_rate: Res<TimeRate>,
+    mut pendulums: Query<&mut DoublePendulum>,
+    mut points: ResMut<Points>,
+    mut step_forward: ResMut<StepForward>,
+) {
+    if !step_forward.enabled || step_forward.step {
+        let t = match step_forward.enabled {
+            true => step_forward.time_step,
+            false => time.delta_secs_f64() * time_rate.0,
+        };
 
-        for (i, p) in &mut model.pendulums.iter_mut().enumerate() {
-            let time_step = if !model.step {
-                update.since_last.as_secs_f64() * model.time_rate
-            } else {
-                model.time_step
-            };
+        for (i, mut pendulum) in pendulums.iter_mut().enumerate() {
+            runge_kutta_step(&mut pendulum, t);
 
-            runge_kutta_step(p, time_step);
+            if (pendulum.p1.clamp() || pendulum.p2.clamp()) && i == 0 {
+                points.add_line();
+            }
 
-            if model.limit_angles {
-                let (limit1, limit2);
-                (p.t1, limit1) = limit_angle(p.t1);
-                (p.t2, limit2) = limit_angle(p.t2);
-
-                if (limit1 || limit2) && i == last_i {
-                    skip_line = true
-                }
+            if i == 0 {
+                points.push([pendulum.p1.angle, pendulum.p2.angle]);
             }
         }
 
-        if skip_line {
-            model.points.push(vec![]);
-        }
-
-        let i = model.points.len();
-        model.points[i - 1].push([model.pendulums[last_i].t1, model.pendulums[last_i].t2]);
-
-        model.step = false;
-    }
-
-    model.egui.set_elapsed_time(update.since_start);
-    ui::update_ui(model);
-}
-
-fn view(app: &App, model: &Model, frame: Frame) {
-    let draw = app.draw();
-    draw.background().color(BLACK);
-
-    for pendulum in &model.pendulums {
-        let point1_pos = vec2(
-            (pendulum.l1 * pendulum.t1.sin()) as f32,
-            (-pendulum.l1 * pendulum.t1.cos()) as f32,
-        );
-
-        let col = hsva(
-            pendulum.col.h,
-            pendulum.col.s,
-            pendulum.col.v,
-            pendulum.col.a,
-        );
-
-        draw.line()
-            .start(vec2(0., 0.))
-            .end(point1_pos * LINE_MUL)
-            .color(col)
-            .caps_round()
-            .weight(2.0);
-
-        let point2_pos = vec2(
-            point1_pos.x + (pendulum.l2 * pendulum.t2.sin()) as f32,
-            point1_pos.y - (pendulum.l2 * pendulum.t2.cos()) as f32,
-        );
-
-        draw.line()
-            .start(point1_pos * LINE_MUL)
-            .end(point2_pos * LINE_MUL)
-            .color(col)
-            .caps_round()
-            .weight(2.0);
-    }
-
-    draw.to_frame(app, &frame).unwrap();
-    model.egui.draw_to_frame(&frame).unwrap();
-}
-
-fn key_pressed(_app: &App, model: &mut Model, key: Key) {
-    match key {
-        Key::Space => {
-            if model.step_forward {
-                model.step = true
-            }
-        }
-        Key::LShift => model.step_forward = !model.step_forward,
-        Key::R => {
-            model.pendulums = model.initial_state.clone();
-            model.points.clear();
-        }
-        _ => (),
+        step_forward.step = false
     }
 }
 
-fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event::WindowEvent) {
-    model.egui.handle_raw_event(event);
+fn draw(mut painter: ShapePainter, pendulums: Query<&DoublePendulum>) {
+    painter.thickness = 2.0;
+    for pendulum in pendulums {
+        let c = pendulum.col;
+        painter.color = Color::hsva(c.h * 360.0, c.s, c.v, c.a);
+
+        let p1 = &pendulum.p1;
+        let p1_pos = vec3(
+            (p1.length * p1.angle.sin()) as f32,
+            (p1.length * -p1.angle.cos()) as f32,
+            0.0,
+        );
+        painter.line(Vec3::ZERO, p1_pos * LINE_MUL);
+
+        let p2 = &pendulum.p2;
+        let p2_pos = vec3(
+            (p2.length * p2.angle.sin()) as f32,
+            (p2.length * -p2.angle.cos()) as f32,
+            0.0,
+        );
+        painter.line(p1_pos * LINE_MUL, (p1_pos + p2_pos) * LINE_MUL);
+    }
+}
+
+fn key_press(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut pendulums: Query<&mut DoublePendulum>,
+    mut points: ResMut<Points>,
+    mut step_forward: ResMut<StepForward>,
+) {
+    if keys.just_pressed(KeyCode::KeyR) {
+        pendulums.iter_mut().for_each(|mut p| p.reset());
+        points.empty();
+    }
+    if keys.just_pressed(KeyCode::ShiftLeft) {
+        step_forward.enabled = !step_forward.enabled;
+    }
+    if step_forward.enabled && keys.just_pressed(KeyCode::Space) {
+        step_forward.step = true;
+    }
 }

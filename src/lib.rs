@@ -1,46 +1,84 @@
-use nannou::{color, prelude::*};
+use bevy::prelude::*;
+use bevy_egui::egui::epaint::Hsva;
 
 pub mod dp;
-use dp::*;
-use nannou_egui::egui::epaint::Hsva;
-
 pub mod ui;
+use std::f64::consts::PI;
+
+use dp::*;
 
 pub const G: f64 = 9.81;
-pub const RAD_TO_DEG: f64 = 57.2958;
-pub const LINE_MUL: f32 = 175.;
-const PI2: f32 = 2.0 * PI;
+pub const LINE_MUL: f32 = 150.0;
+pub const RAD_TO_DEG: f64 = 180.0 / PI;
+pub const PI2: f64 = PI * 2.0;
+pub const PI05: f64 = PI / 2.0;
 
-pub struct Model {
-    pub egui: nannou_egui::Egui,
-    pub pendulums: Vec<DoublePendulum>,
-    pub limit_angles: bool,
-    pub time_rate: f64,
-    pub time_step: f64,
-    pub g: f64,
-    pub step_forward: bool,
-    pub step: bool,
+#[derive(Resource)]
+pub struct TimeRate(pub f64);
 
-    pub points: Vec<Vec<[f64; 2]>>,
-    pub initial_state: Vec<DoublePendulum>,
-}
-
-impl Model {
-    pub fn reset(&mut self) {
-        self.pendulums = self.initial_state.clone();
-        self.points = vec![vec![]]
+impl Default for TimeRate {
+    fn default() -> Self {
+        TimeRate(1.0)
     }
 }
 
-pub fn limit_angle(angle: f64) -> (f64, bool) {
-    if angle > PI_F64 {
-        let n = ((angle - -PI_F64) / (2. * PI_F64)).floor();
-        (angle - 2. * PI_F64 * n, true)
-    } else if angle < -PI_F64 {
-        let n = (-(angle - PI_F64) / (2. * PI_F64)).floor();
-        (angle + 2. * PI_F64 * n, true)
-    } else {
-        (angle, false)
+#[derive(Resource)]
+pub struct Points(Vec<Vec<[f64; 2]>>);
+
+impl Points {
+    pub fn empty(&mut self) {
+        self.0 = vec![vec![]]
+    }
+
+    pub fn add_line(&mut self) {
+        self.0.push(vec![]);
+    }
+
+    pub fn push(&mut self, pt: [f64; 2]) {
+        let i = self.0.len() - 1;
+        self.0[i].push(pt);
+    }
+}
+
+impl Default for Points {
+    fn default() -> Self {
+        Points(vec![vec![]])
+    }
+}
+
+#[derive(Resource)]
+pub struct StepForward {
+    pub enabled: bool,
+    pub time_step: f64,
+    pub step: bool,
+}
+
+impl Default for StepForward {
+    fn default() -> Self {
+        StepForward {
+            enabled: false,
+            time_step: 0.01,
+            step: false,
+        }
+    }
+}
+
+pub fn initialize_pendulums(
+    commands: &mut Commands,
+    num_pendulums: u32,
+    start_angle: f64,
+    offset_angle: f64,
+    hue: f32,
+) {
+    let mut angle = start_angle;
+    for i in 0..num_pendulums {
+        let s = i as f32 / num_pendulums as f32;
+        commands.spawn(DoublePendulum::new(
+            angle,
+            angle,
+            Hsva::new(hue, 1.0 - s, 1.0, 1.0).into(),
+        ));
+        angle += offset_angle;
     }
 }
 
@@ -96,10 +134,10 @@ pub fn evaluate(
     let dth1 = vars[1];
     let th2 = vars[2];
     let dth2 = vars[3];
-    let m1 = pendulum.m1;
-    let m2 = pendulum.m2;
-    let l1 = pendulum.l1;
-    let l2 = pendulum.l2;
+    let m1 = pendulum.p1.mass;
+    let m2 = pendulum.p2.mass;
+    let l1 = pendulum.p1.length;
+    let l2 = pendulum.p2.length;
 
     change[0] = dth1;
 
@@ -118,50 +156,4 @@ pub fn evaluate(
     num *= 2. * (th1 - th2).sin();
     num /= l2 * (2. * m1 + m2 - m2 * (2. * (th1 - th2)).cos());
     change[3] = num;
-}
-
-pub fn initialize_pendulums(
-    num_pendulums: u32,
-    start_angle: f64,
-    offset_angle: f64,
-    hue: f32,
-) -> Vec<DoublePendulum> {
-    let mut pendulums = vec![];
-
-    let mut angle = start_angle;
-    for i in 0..num_pendulums {
-        let s = i as f32 / num_pendulums as f32;
-        pendulums.push(
-            // 0,
-            DoublePendulum {
-                t1: angle,
-                t2: angle,
-                col: Hsva::new(hue, s * 3., 1. - s, 1.0),
-                ..Default::default()
-            },
-        );
-        angle += offset_angle;
-    }
-
-    pendulums.reverse();
-    pendulums
-}
-
-pub fn hsva_rad(h: f32, s: f32, v: f32, a: f32) -> color::Hsva {
-    hsva(h / (PI2), s, v, a)
-}
-
-pub fn calc_standard_dev(values: &Vec<f64>) -> f64 {
-    let mut sum = 0.;
-    for value in values {
-        sum += value;
-    }
-    let mean = sum / values.len() as f64;
-
-    sum = 0.;
-    for value in values {
-        sum += (value - mean).powi(2);
-    }
-
-    (sum / values.len() as f64).sqrt()
 }
