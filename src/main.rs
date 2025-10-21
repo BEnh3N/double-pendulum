@@ -1,5 +1,7 @@
+use std::f64::consts::PI;
+
 use bevy::prelude::*;
-use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{egui::Color32, EguiPlugin, EguiPrimaryContextPass};
 use bevy_vector_shapes::prelude::*;
 use double_pendulum::{dp::*, ui::*, *};
 
@@ -11,6 +13,7 @@ fn main() {
             EguiPlugin::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(Gravity(9.81))
         .init_resource::<TimeRate>()
         .init_resource::<Points>()
         .init_resource::<StepForward>()
@@ -22,16 +25,18 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d::default());
-    // initialize_pendulums(&mut commands, 1, PI / 6.0, 0.0, 0.0);
-    initialize_pendulums(&mut commands, 1000, PI05, 0.000001, 2.0 / 3.0);
+    commands.spawn(DoublePendulum::new(PI / 6.0, PI / 6.0, Color32::WHITE));
+    // commands.spawn(DoublePendulum::new(PI, PI, Color32::WHITE));
+    // initialize_pendulums(&mut commands, 1000, PI05, 0.000001, 2.0 / 3.0);
 }
 
 fn update(
-    time: Res<Time>,
-    time_rate: Res<TimeRate>,
+    gravity: Res<Gravity>,
     mut pendulums: Query<&mut DoublePendulum>,
     mut points: ResMut<Points>,
     mut step_forward: ResMut<StepForward>,
+    time: Res<Time>,
+    time_rate: Res<TimeRate>,
 ) {
     if !step_forward.enabled || step_forward.step {
         let t = match step_forward.enabled {
@@ -40,7 +45,7 @@ fn update(
         };
 
         for (i, mut pendulum) in pendulums.iter_mut().enumerate() {
-            runge_kutta_step(&mut pendulum, t);
+            runge_kutta_step(&mut pendulum, t, gravity.0);
 
             if (pendulum.p1.clamp() || pendulum.p2.clamp()) && i == 0 {
                 points.add_line();
@@ -76,23 +81,5 @@ fn draw(mut painter: ShapePainter, pendulums: Query<&DoublePendulum>) {
             0.0,
         );
         painter.line(p1_pos * LINE_MUL, (p1_pos + p2_pos) * LINE_MUL);
-    }
-}
-
-fn key_press(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut pendulums: Query<&mut DoublePendulum>,
-    mut points: ResMut<Points>,
-    mut step_forward: ResMut<StepForward>,
-) {
-    if keys.just_pressed(KeyCode::KeyR) {
-        pendulums.iter_mut().for_each(|mut p| p.reset());
-        points.empty();
-    }
-    if keys.just_pressed(KeyCode::ShiftLeft) {
-        step_forward.enabled = !step_forward.enabled;
-    }
-    if step_forward.enabled && keys.just_pressed(KeyCode::Space) {
-        step_forward.step = true;
     }
 }

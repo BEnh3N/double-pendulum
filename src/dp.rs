@@ -5,8 +5,6 @@ use bevy_egui::egui::epaint::Hsva;
 
 use crate::{PI05, PI2};
 
-pub const NUM_ARGS: usize = 7;
-
 #[derive(Component, Default)]
 pub struct DoublePendulum {
     pub p1: Pendulum,
@@ -18,7 +16,10 @@ pub struct DoublePendulum {
 }
 
 impl DoublePendulum {
-    pub fn new(a1: f64, a2: f64, col: Hsva) -> DoublePendulum {
+    pub fn new<C>(a1: f64, a2: f64, col: C) -> DoublePendulum
+    where
+        C: Into<Hsva>,
+    {
         let p1 = Pendulum {
             angle: a1,
             ..Default::default()
@@ -31,7 +32,7 @@ impl DoublePendulum {
         DoublePendulum {
             p1,
             p2,
-            col,
+            col: col.into(),
             t: 0.0,
             initial_state,
         }
@@ -40,28 +41,6 @@ impl DoublePendulum {
     pub fn reset(&mut self) {
         self.p1 = self.initial_state.0.clone();
         self.p2 = self.initial_state.1.clone();
-    }
-
-    pub fn get_vars(&self) -> [f64; NUM_ARGS] {
-        [
-            self.p1.angle,
-            self.p1.velocity,
-            self.p2.angle,
-            self.p2.velocity,
-            self.p1.acceleration,
-            self.p2.acceleration,
-            self.t,
-        ]
-    }
-
-    pub fn set_vars(&mut self, vars: [f64; NUM_ARGS]) {
-        self.p1.angle = vars[0];
-        self.p1.velocity = vars[1];
-        self.p2.angle = vars[2];
-        self.p2.velocity = vars[3];
-        self.p1.acceleration = vars[4];
-        self.p2.acceleration = vars[5];
-        self.t = vars[6];
     }
 }
 
@@ -81,7 +60,7 @@ impl Pendulum {
         if *t > PI {
             *t = (*t + PI) % PI2 - PI;
             true
-        } else if *t < -PI {
+        } else if *t <= -PI {
             *t = (*t + PI) % PI2 + PI;
             true
         } else {
