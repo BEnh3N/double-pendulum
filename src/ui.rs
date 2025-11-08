@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 
 use crate::{
     dp::{DoublePendulum, Pendulum},
-    Gravity, Points, StepForward, TimeRate, RAD_TO_DEG,
+    Gravity, Points, StepForward, TimeRate,
 };
 use bevy::prelude::*;
 use bevy_egui::{
@@ -142,6 +142,6 @@ fn pendulum_details(ui: &mut Ui, pendulum: &mut Pendulum, name: &str) {
                 .suffix("kg"),
         );
     });
-    ui.label(format!("{:.5}°", pendulum.angle * RAD_TO_DEG));
-    ui.label(format!("{:.5} rad/s", pendulum.velocity));
+    ui.monospace(format!("{:+.4} rad", pendulum.angle));
+    ui.monospace(format!("{:+.4} rad/s", pendulum.velocity));
 }

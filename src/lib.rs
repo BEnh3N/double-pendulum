@@ -8,7 +8,6 @@ use std::f64::consts::PI;
 use dp::*;
 
 pub const LINE_MUL: f32 = 150.0;
-pub const RAD_TO_DEG: f64 = 180.0 / PI;
 pub const PI2: f64 = PI * 2.0;
 pub const PI05: f64 = PI / 2.0;
 
@@ -78,37 +77,13 @@ pub fn initialize_pendulums(
         commands.spawn(DoublePendulum::new(
             angle,
             angle,
-            Hsva::new(hue, 1.0 - s, s.sqrt(), 1.0),
+            Hsva::new(hue, 1.0 - s * s, s.sqrt(), 1.0),
         ));
         angle += offset_angle;
     }
 }
 
-pub fn runge_kutta_step(pendulum: &mut DoublePendulum, h: f64, g: f64) {
-    let m1 = pendulum.p1.mass;
-    let m2 = pendulum.p2.mass;
-    let l1 = pendulum.p1.length;
-    let l2 = pendulum.p2.length;
-
-    let state = (
-        pendulum.p1.angle,
-        pendulum.p1.velocity,
-        pendulum.p2.angle,
-        pendulum.p2.velocity,
-    );
-
-    let next_state = rk4(state, h, |(a1, v1, a2, v2)| {
-        let (acc1, acc2) = acceleration(a1, v1, a2, v2, g, m1, m2, l1, l2);
-        (v1, acc1, v2, acc2)
-    });
-
-    pendulum.p1.angle = next_state.0;
-    pendulum.p1.velocity = next_state.1;
-    pendulum.p2.angle = next_state.2;
-    pendulum.p2.velocity = next_state.3;
-}
-
-fn acceleration(
+pub fn acceleration(
     a1: f64,
     v1: f64,
     a2: f64,
@@ -140,7 +115,7 @@ fn acceleration(
     (acc1, acc2)
 }
 
-fn rk4<F>(state: (f64, f64, f64, f64), h: f64, derivs: F) -> (f64, f64, f64, f64)
+pub fn rk4<F>(state: (f64, f64, f64, f64), h: f64, derivs: F) -> (f64, f64, f64, f64)
 where
     F: Fn((f64, f64, f64, f64)) -> (f64, f64, f64, f64),
 {

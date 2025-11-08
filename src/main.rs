@@ -25,7 +25,7 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d::default());
-    commands.spawn(DoublePendulum::new(PI / 6.0, PI / 6.0, Color32::WHITE));
+    commands.spawn(DoublePendulum::new(2.49, 0.25, Color32::WHITE));
     // commands.spawn(DoublePendulum::new(PI, PI, Color32::WHITE));
     // initialize_pendulums(&mut commands, 1000, PI05, 0.000001, 2.0 / 3.0);
 }
@@ -39,13 +39,13 @@ fn update(
     time_rate: Res<TimeRate>,
 ) {
     if !step_forward.enabled || step_forward.step {
-        let t = match step_forward.enabled {
+        let time_step = match step_forward.enabled {
             true => step_forward.time_step,
             false => time.delta_secs_f64() * time_rate.0,
         };
 
         for (i, mut pendulum) in pendulums.iter_mut().enumerate() {
-            runge_kutta_step(&mut pendulum, t, gravity.0);
+            pendulum.step(time_step, gravity.0);
 
             if (pendulum.p1.clamp() || pendulum.p2.clamp()) && i == 0 {
                 points.add_line();
@@ -81,5 +81,10 @@ fn draw(mut painter: ShapePainter, pendulums: Query<&DoublePendulum>) {
             0.0,
         );
         painter.line(p1_pos * LINE_MUL, (p1_pos + p2_pos) * LINE_MUL);
+
+        painter.translate(p1_pos * LINE_MUL);
+        painter.circle(p1.mass.sqrt() as f32 * 4.0);
+        painter.translate(p2_pos * LINE_MUL);
+        painter.circle(p2.mass.sqrt() as f32 * 4.0);
     }
 }
